@@ -30,17 +30,21 @@ def root():
 @app.post("/addressbook", response_model=schemas.AddressBook, status_code=status.HTTP_201_CREATED)
 def create_addressBook(addressBook: schemas.AddressBookCreate, session: Session = Depends(get_session)):
 
-    # create an instance of the AddressBook database model
-    addressBookdb = models.AddressBook(place_name = addressBook.place_name, city = addressBook.city, lat = addressBook.lat, 
-                                        long = addressBook.long)
+    if (-90<=addressBook.lat<=90) and (-180<=addressBook.long<=180): #range from -90 to 90 for latitude and -180 to 180 for longitude
+        
+        # create an instance of the AddressBook database model
+        addressBookdb = models.AddressBook(place_name = addressBook.place_name, city = addressBook.city, lat = addressBook.lat, 
+                                            long = addressBook.long)
 
-    # add it to the session and commit it
-    session.add(addressBookdb)
-    session.commit()
-    session.refresh(addressBookdb)
+        # add it to the session and commit it
+        session.add(addressBookdb)
+        session.commit()
+        session.refresh(addressBookdb)
 
-    # return the addressBook object
-    return addressBookdb
+        # return the addressBook object
+        return addressBookdb
+    else:
+        raise HTTPException(status_code=404, detail=f"Co-ordinate {addressBook.lat,addressBook.long} not in range lat(-90,90) and long(-180,180)")
 
 @app.get("/addressBook/{id}", response_model=schemas.AddressBook)
 def read_addressBook(id: int, session: Session = Depends(get_session)):
@@ -60,20 +64,24 @@ def update_addressBook(id: int, addressbook_request:schemas.AddressBookCreate, s
     # get the addressBook item with the given id 
     addressBook = session.query(models.AddressBook).get(id)
 
+    if (-90<=addressbook_request.lat<=90) and (-180<=addressbook_request.long<=180):
+
     # update addressBook item with the given task (if an item with the given id was found)
-    if addressBook:
-        update_item_encoded = jsonable_encoder(addressbook_request)
-        addressBook.place_name = update_item_encoded["place_name"]
-        addressBook.city = update_item_encoded["city"]
-        addressBook.lat = update_item_encoded["lat"]
-        addressBook.long = update_item_encoded["long"]
-        session.commit()
+        if addressBook:
+            update_item_encoded = jsonable_encoder(addressbook_request)
+            addressBook.place_name = update_item_encoded["place_name"]
+            addressBook.city = update_item_encoded["city"]
+            addressBook.lat = update_item_encoded["lat"]
+            addressBook.long = update_item_encoded["long"]
+            session.commit()
 
-    # check if addressBook item with given id exists. If not, raise exception and return 404 not found response
-    if not addressBook:
-        raise HTTPException(status_code=404, detail=f"addressBook item with id {id} not found")
+        # check if addressBook item with given id exists. If not, raise exception and return 404 not found response
+        if not addressBook:
+            raise HTTPException(status_code=404, detail=f"addressBook item with id {id} not found")
 
-    return addressBook
+        return addressBook
+    else:
+        raise HTTPException(status_code=404, detail=f"Co-ordinate {addressbook_request.lat,addressbook_request.long} not in range lat(-90,90) and long(-180,180)")
 
 @app.delete("/addressBook/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_addressBook(id: int, session: Session = Depends(get_session)):
@@ -100,18 +108,23 @@ def read_addressBook_list(session: Session = Depends(get_session)):
 
 @app.get("/getaddressbycoordinate", response_model = List[schemas.AddressBook])
 def get_address_by_coordinate(dist:float, lat:float, long:float, session:Session = Depends(get_session)):
-    center_point_tuple =(lat,long)
-    radius = dist # in kilometer
-    address = []
-    # print(center_point_tuple)
-    addressBook_list = session.query(models.AddressBook).all()
-    for data in addressBook_list:
-        test_point_tuple = (data.lat,data.long)
-        # print(test_point_tuple)
-        # print((data.long))
-        dis = distance.distance(center_point_tuple, test_point_tuple).km
-        # print("Distance: {}".format(dis))
 
-        if dis <= radius:
-            address.append(data)
-    return address
+    if (-90<=lat<=90) and (-180<=long<=180):
+
+        center_point_tuple =(lat,long)
+        radius = dist # in kilometer
+        address = []
+        # print(center_point_tuple)
+        addressBook_list = session.query(models.AddressBook).all()
+        for data in addressBook_list:
+            test_point_tuple = (data.lat,data.long)
+            # print(test_point_tuple)
+            # print((data.long))
+            dis = distance.distance(center_point_tuple, test_point_tuple).km
+            print("Distance: {}".format(dis))
+
+            if dis <= radius:
+                address.append(data)
+        return address
+    else:
+        raise HTTPException(status_code=404, detail=f"Co-ordinate {lat,long} not in range lat(-90,90) and long(-180,180)")
