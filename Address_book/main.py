@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 import models
 import schemas
+# import uvicorn
 
 from geopy import distance
 
@@ -128,3 +129,7 @@ def get_address_by_coordinate(dist:float, lat:float, long:float, session:Session
         return address
     else:
         raise HTTPException(status_code=404, detail=f"Co-ordinate {lat,long} not in range lat(-90,90) and long(-180,180)")
+
+
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
